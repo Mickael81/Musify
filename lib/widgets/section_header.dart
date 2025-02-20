@@ -20,29 +20,20 @@
  */
 
 import 'package:flutter/material.dart';
-import 'package:musify/extensions/l10n.dart';
+import 'package:musify/widgets/section_title.dart';
 
-class ConfirmationDialog extends StatelessWidget {
-  const ConfirmationDialog({
-    super.key,
-    this.confirmationMessage,
-    required this.submitMessage,
-    required this.onCancel,
-    required this.onSubmit,
-  });
-  final String? confirmationMessage;
-  final String submitMessage;
-  final VoidCallback? onCancel;
-  final VoidCallback? onSubmit;
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({super.key, required this.title, this.actionButton});
+  final String title;
+  final Widget? actionButton;
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n!.confirmation),
-      content: confirmationMessage != null ? Text(confirmationMessage!) : null,
-      actions: <Widget>[
-        TextButton(onPressed: onCancel, child: Text(context.l10n!.cancel)),
-        TextButton(onPressed: onSubmit, child: Text(context.l10n!.remove)),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        SectionTitle(title, Theme.of(context).colorScheme.primary),
+        if (actionButton != null) actionButton!,
       ],
     );
   }

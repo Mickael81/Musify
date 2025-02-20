@@ -23,6 +23,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musify/API/version.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/utilities/common_variables.dart';
 import 'package:musify/utilities/url_launcher.dart';
 
 class AboutPage extends StatelessWidget {
@@ -31,14 +32,13 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n!.about),
-      ),
+      appBar: AppBar(title: Text(context.l10n!.about)),
       body: SingleChildScrollView(
+        padding: commonSingleChildScrollViewPadding,
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 17, 8, 0),
+              padding: const EdgeInsets.symmetric(vertical: 15),
               child: Text(
                 'Musify  | $appVersion',
                 style: TextStyle(
@@ -50,13 +50,8 @@ class AboutPage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-            const Divider(
-              color: Colors.white24,
-              thickness: 0.8,
-              height: 50,
-            ),
+            const Divider(color: Colors.white24, thickness: 0.8, height: 20),
             Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(8),
                 leading: Container(
@@ -83,18 +78,14 @@ class AboutPage extends StatelessWidget {
                       icon: const Icon(FluentIcons.code_24_filled),
                       tooltip: 'Github',
                       onPressed: () {
-                        launchURL(
-                          Uri.parse('https://github.com/gokadzev'),
-                        );
+                        launchURL(Uri.parse('https://github.com/gokadzev'));
                       },
                     ),
                     IconButton(
                       icon: const Icon(FluentIcons.globe_24_filled),
                       tooltip: 'Website',
                       onPressed: () {
-                        launchURL(
-                          Uri.parse('https://gokadzev.github.io'),
-                        );
+                        launchURL(Uri.parse('https://gokadzev.github.io'));
                       },
                     ),
                   ],
