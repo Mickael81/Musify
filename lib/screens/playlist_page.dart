@@ -35,13 +35,15 @@ import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/common_variables.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/playlist_image_picker.dart';
+import 'package:musify/utilities/sort_utils.dart';
 import 'package:musify/utilities/utils.dart';
 import 'package:musify/widgets/playlist_cube.dart';
 import 'package:musify/widgets/playlist_header.dart';
 import 'package:musify/widgets/song_bar.dart';
+import 'package:musify/widgets/sort_button.dart';
 import 'package:musify/widgets/spinner.dart';
 
-enum PlaylistSortType { title, artist }
+enum PlaylistSortType { default_, title, artist }
 
 class PlaylistPage extends StatefulWidget {
   const PlaylistPage({
@@ -75,7 +77,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   // Sorting
   late PlaylistSortType _sortType = PlaylistSortType.values.firstWhere(
     (e) => e.name == playlistSortSetting,
-    orElse: () => PlaylistSortType.title,
+    orElse: () => PlaylistSortType.default_,
   );
 
   @override
@@ -554,26 +556,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
     _pagingController.refresh();
   }
 
-  Widget _buildShuffleSongActionButton() {
-    return IconButton(
-      color: Theme.of(context).colorScheme.primary,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      icon: const Icon(FluentIcons.arrow_shuffle_16_filled),
-      iconSize: 25,
-      onPressed: () {
-        final _newList = List.of(_playlist['list'])..shuffle();
-        setActivePlaylist({
-          'title': _playlist['title'],
-          'image': _playlist['image'],
-          'list': _newList,
-        });
-      },
-    );
-  }
-
   String _getSortTypeDisplayText(PlaylistSortType type) {
     switch (type) {
+      case PlaylistSortType.default_:
+        return context.l10n!.default_;
       case PlaylistSortType.title:
         return context.l10n!.name;
       case PlaylistSortType.artist:
@@ -582,24 +568,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   Widget _buildSortSongActionButton() {
-    return DropdownButton<PlaylistSortType>(
-      value: _sortType,
-      borderRadius: BorderRadius.circular(5),
-      dropdownColor: Theme.of(context).colorScheme.secondaryContainer,
-      underline: const SizedBox.shrink(),
-      iconEnabledColor: Theme.of(context).colorScheme.primary,
-      elevation: 0,
-      iconSize: 25,
-      icon: const Icon(FluentIcons.filter_16_filled),
-      items: PlaylistSortType.values.map((type) {
-        return DropdownMenuItem<PlaylistSortType>(
-          value: type,
-          child: Text(_getSortTypeDisplayText(type)),
-        );
-      }).toList(),
-      onChanged: (type) {
-        if (type == null || type == _sortType) return;
-
+    return SortButton<PlaylistSortType>(
+      currentSortType: _sortType,
+      sortTypes: PlaylistSortType.values,
+      sortTypeToString: _getSortTypeDisplayText,
+      onSelected: (type) {
         setState(() {
           _sortType = type;
           addOrUpdateData('settings', 'playlistSortType', type.name);
@@ -617,13 +590,19 @@ class _PlaylistPageState extends State<PlaylistPage> {
     if (_playlist == null || _playlist['list'] == null) return;
 
     final playlist = _playlist['list'] as List;
-    final sortKey = type == PlaylistSortType.title ? 'title' : 'artist';
 
-    playlist.sort((a, b) {
-      final valueA = (a[sortKey] ?? '').toString().toLowerCase();
-      final valueB = (b[sortKey] ?? '').toString().toLowerCase();
-      return valueA.compareTo(valueB);
-    });
+    switch (type) {
+      case PlaylistSortType.default_:
+        // Restore original order by re-fetching the playlist
+        _playlist = widget.playlistData;
+        break;
+      case PlaylistSortType.title:
+        sortSongsByKey(playlist, 'title');
+        break;
+      case PlaylistSortType.artist:
+        sortSongsByKey(playlist, 'artist');
+        break;
+    }
 
     _playlist['list'] = playlist;
   }
@@ -631,11 +610,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget buildSongActionsRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        _buildSortSongActionButton(),
-        const SizedBox(width: 5),
-        _buildShuffleSongActionButton(),
-      ],
+      children: [_buildSortSongActionButton()],
     );
   }
 

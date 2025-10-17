@@ -794,13 +794,15 @@ Future<List<Map<String, int>>> getSkipSegments(String id) async {
   }
 }
 
-void getSimilarSong(String songYtId) async {
+Future<void> getSimilarSong(String songYtId) async {
   try {
     final song = await _yt.videos.get(songYtId);
     final relatedSongs = await _yt.videos.getRelatedVideos(song) ?? [];
 
     if (relatedSongs.isNotEmpty) {
       nextRecommendedSong = returnSongLayout(0, relatedSongs[0]);
+    } else {
+      logger.log('No related songs found for $songYtId', null, null);
     }
   } catch (e, stackTrace) {
     logger.log('Error while fetching next similar song:', e, stackTrace);
@@ -1155,6 +1157,7 @@ Future<bool> makeSongOffline(dynamic song, {bool fromPlaylist = false}) async {
 
     song['audioPath'] = audioFile.path;
     song['isOffline'] = true;
+    song['dateAdded'] = DateTime.now().millisecondsSinceEpoch;
     if (!fromPlaylist) {
       userOfflineSongs.add(song);
       await addOrUpdateData('userNoBackup', 'offlineSongs', userOfflineSongs);

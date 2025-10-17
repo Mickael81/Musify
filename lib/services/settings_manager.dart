@@ -23,16 +23,13 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:musify/screens/playlist_page.dart';
+import 'package:musify/screens/user_songs_page.dart';
 import 'package:musify/utilities/utils.dart';
 
 // Preferences
 
 final shouldWeCheckUpdates = ValueNotifier<bool?>(
   Hive.box('settings').get('shouldWeCheckUpdates', defaultValue: null),
-);
-
-final backgroundPlay = ValueNotifier<bool>(
-  Hive.box('settings').get('backgroundPlay', defaultValue: false),
 );
 
 final playNextSongAutomatically = ValueNotifier<bool>(
@@ -84,7 +81,11 @@ final themeModeSetting =
 
 String playlistSortSetting = Hive.box(
   'settings',
-).get('playlistSortType', defaultValue: PlaylistSortType.title.name);
+).get('playlistSortType', defaultValue: PlaylistSortType.default_.name);
+
+String offlineSortSetting = Hive.box(
+  'settings',
+).get('offlineSortType', defaultValue: OfflineSortType.default_.name);
 
 Color primaryColorSetting = Color(
   Hive.box('settings').get('accentColor', defaultValue: 0xff91cef4),
