@@ -19,7 +19,9 @@
  *     please visit: https://github.com/gokadzev/Musify
  */
 
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:musify/utilities/common_variables.dart';
 import 'package:musify/utilities/url_launcher.dart';
 
 class AnnouncementBox extends StatelessWidget {
@@ -29,16 +31,18 @@ class AnnouncementBox extends StatelessWidget {
     required this.backgroundColor,
     required this.textColor,
     required this.url,
+    this.onDismiss,
   });
   final String message;
   final Color backgroundColor;
   final Color textColor;
   final String url;
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: commonBarPadding,
       child: GestureDetector(
         onTap: () => launchURL(Uri.parse(url)),
         child: Card(
@@ -48,7 +52,7 @@ class AnnouncementBox extends StatelessWidget {
           ),
           elevation: 0.1,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Icon(Icons.notifications, color: textColor, size: 32),
@@ -65,6 +69,11 @@ class AnnouncementBox extends StatelessWidget {
                     maxLines: 2,
                   ),
                 ),
+                if (onDismiss != null)
+                  IconButton(
+                    icon: Icon(FluentIcons.dismiss_24_filled, color: textColor),
+                    onPressed: onDismiss,
+                  ),
               ],
             ),
           ),
