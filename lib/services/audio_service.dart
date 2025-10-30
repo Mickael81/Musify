@@ -688,8 +688,8 @@ class MusifyAudioHandler extends BaseAudioHandler {
         return;
       }
 
-      // Prevent overlapping song loads
-      if (_isLoadingNextSong) {
+      // If a song is already loading and it's the same index, skip
+      if (_isLoadingNextSong && _currentQueueIndex == index) {
         logger.log(
           'Song already loading, skipping request for index: $index',
           null,
@@ -787,11 +787,11 @@ class MusifyAudioHandler extends BaseAudioHandler {
     final ytid = nextSong['ytid'];
     if (ytid == null) return;
 
-    // Mark as preloading
+    // Mark as preloading synchronously
     _preloadingYtIds.add(ytid);
-    _activePreloadCount++;
 
     Future.microtask(() async {
+      _activePreloadCount++;
       try {
         await _preloadSingleSong(nextSong).timeout(
           const Duration(seconds: 8),
@@ -1228,17 +1228,21 @@ class MusifyAudioHandler extends BaseAudioHandler {
           ..addAll(_queueList);
 
         final currentSong = _queueList[_currentQueueIndex];
+        final currentYtId = currentSong['ytid'];
 
         _queueList.shuffle();
 
-        final newCurrentIndex = _queueList.indexWhere(
-          (song) => song['ytid'] == currentSong['ytid'],
-        );
+        // Only reorder if current song has a valid ytid
+        if (currentYtId != null) {
+          final newCurrentIndex = _queueList.indexWhere(
+            (song) => song['ytid'] == currentYtId,
+          );
 
-        if (newCurrentIndex != -1 && newCurrentIndex != 0) {
-          _queueList
-            ..removeAt(newCurrentIndex)
-            ..insert(0, currentSong);
+          if (newCurrentIndex != -1 && newCurrentIndex != 0) {
+            _queueList
+              ..removeAt(newCurrentIndex)
+              ..insert(0, currentSong);
+          }
         }
 
         _currentQueueIndex = 0;
@@ -1246,14 +1250,16 @@ class MusifyAudioHandler extends BaseAudioHandler {
       } else if (!shuffleEnabled && wasShuffled) {
         if (_originalQueueList.isNotEmpty) {
           final currentSong = _queueList[_currentQueueIndex];
+          final currentYtId = currentSong['ytid'];
 
           _queueList
             ..clear()
             ..addAll(_originalQueueList);
 
-          _currentQueueIndex = _queueList.indexWhere(
-            (song) => song['ytid'] == currentSong['ytid'],
-          );
+          // Find current song in original queue, default to 0 if not found or ytid is null
+          _currentQueueIndex = currentYtId != null
+              ? _queueList.indexWhere((song) => song['ytid'] == currentYtId)
+              : 0;
 
           if (_currentQueueIndex == -1) {
             _currentQueueIndex = 0;
