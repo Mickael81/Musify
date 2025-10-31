@@ -87,9 +87,10 @@ class _SongBarState extends State<SongBar> {
 
     // Initialize ValueNotifiers only once
     _songLikeStatus = ValueNotifier(isSongAlreadyLiked(_ytid));
-    _songOfflineStatus = ValueNotifier(
-      widget.isSongOffline ?? isSongAlreadyOffline(_ytid),
-    );
+    final isOffline =
+        widget.isSongOffline ??
+        (widget.song['isOffline'] ?? isSongAlreadyOffline(_ytid));
+    _songOfflineStatus = ValueNotifier(isOffline);
   }
 
   @override
@@ -153,15 +154,31 @@ class _SongBarState extends State<SongBar> {
         widget.showMusicDuration && widget.song['duration'] != null;
 
     if (_artworkPath != null) {
-      return _OfflineArtwork(artworkPath: _artworkPath, size: size);
+      return ValueListenableBuilder<bool>(
+        valueListenable: _songOfflineStatus,
+        builder: (_, isOffline, __) {
+          return _OfflineArtwork(
+            artworkPath: _artworkPath,
+            size: size,
+            isOffline: isOffline,
+            primaryColor: primaryColor,
+          );
+        },
+      );
     }
 
-    return _OnlineArtwork(
-      lowResImageUrl: _lowResImageUrl,
-      size: size,
-      isDurationAvailable: isDurationAvailable,
-      primaryColor: primaryColor,
-      duration: widget.song['duration'],
+    return ValueListenableBuilder<bool>(
+      valueListenable: _songOfflineStatus,
+      builder: (_, isOffline, __) {
+        return _OnlineArtwork(
+          lowResImageUrl: _lowResImageUrl,
+          size: size,
+          isDurationAvailable: isDurationAvailable,
+          primaryColor: primaryColor,
+          duration: widget.song['duration'],
+          isOffline: isOffline,
+        );
+      },
     );
   }
 
@@ -212,17 +229,18 @@ class _SongBarState extends State<SongBar> {
     if (_songOfflineStatus.value) {
       removeSongFromOffline(_ytid).then((success) {
         if (success) {
+          _songOfflineStatus.value = false;
           showToast(context, context.l10n!.songRemovedFromOffline);
         }
       });
     } else {
       makeSongOffline(widget.song).then((success) {
         if (success) {
+          _songOfflineStatus.value = true;
           showToast(context, context.l10n!.songAddedToOffline);
         }
       });
     }
-    _songOfflineStatus.value = !_songOfflineStatus.value;
   }
 
   List<PopupMenuEntry<String>> _buildMenuItems(
@@ -358,24 +376,56 @@ class _SongInfo extends StatelessWidget {
 }
 
 class _OfflineArtwork extends StatelessWidget {
-  const _OfflineArtwork({required this.artworkPath, required this.size});
+  const _OfflineArtwork({
+    required this.artworkPath,
+    required this.size,
+    required this.isOffline,
+    required this.primaryColor,
+  });
 
   final String artworkPath;
   final double size;
+  final bool isOffline;
+  final Color primaryColor;
 
   @override
   Widget build(BuildContext context) {
+    final overlayColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.black.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.7);
+
     return SizedBox(
       width: size,
       height: size,
-      child: ClipRRect(
-        borderRadius: commonBarRadius,
-        child: Image.file(
-          File(artworkPath),
-          fit: BoxFit.cover,
-          cacheWidth: 256,
-          cacheHeight: 256,
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: commonBarRadius,
+            child: Image.file(
+              File(artworkPath),
+              fit: BoxFit.cover,
+              cacheWidth: 256,
+              cacheHeight: 256,
+            ),
+          ),
+          if (isOffline)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: commonBarRadius,
+                child: ColoredBox(
+                  color: overlayColor,
+                  child: Center(
+                    child: Icon(
+                      FluentIcons.cellular_off_24_filled,
+                      size: 24,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -388,6 +438,7 @@ class _OnlineArtwork extends StatelessWidget {
     required this.isDurationAvailable,
     required this.primaryColor,
     required this.duration,
+    required this.isOffline,
   });
 
   final String lowResImageUrl;
@@ -395,59 +446,87 @@ class _OnlineArtwork extends StatelessWidget {
   final bool isDurationAvailable;
   final Color primaryColor;
   final dynamic duration;
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context) {
     final isImageSmall = lowResImageUrl.contains('default.jpg');
+    final overlayColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.black.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.7);
 
-    return Stack(
-      alignment: Alignment.center,
-      children: <Widget>[
-        CachedNetworkImage(
-          key: ValueKey(lowResImageUrl),
-          width: size,
-          height: size,
-          imageUrl: lowResImageUrl,
-          memCacheWidth: 256,
-          memCacheHeight: 256,
-          imageBuilder: (context, imageProvider) => SizedBox(
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          CachedNetworkImage(
+            key: ValueKey(lowResImageUrl),
+            imageUrl: lowResImageUrl,
             width: size,
             height: size,
-            child: ClipRRect(
+            fit: BoxFit.cover,
+            memCacheWidth: 256,
+            memCacheHeight: 256,
+            imageBuilder: (context, imageProvider) => ClipRRect(
               borderRadius: commonBarRadius,
-              child: Image(
-                color: isDurationAvailable
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : null,
-                colorBlendMode: isDurationAvailable ? BlendMode.multiply : null,
-                opacity: isDurationAvailable
-                    ? const AlwaysStoppedAnimation(0.45)
-                    : null,
-                image: imageProvider,
-                centerSlice: isImageSmall
-                    ? const Rect.fromLTRB(1, 1, 1, 1)
-                    : null,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image(
+                    color: isDurationAvailable
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                    colorBlendMode: isDurationAvailable
+                        ? BlendMode.multiply
+                        : null,
+                    opacity: isDurationAvailable
+                        ? const AlwaysStoppedAnimation(0.45)
+                        : null,
+                    image: imageProvider,
+                    fit: isImageSmall ? BoxFit.fill : BoxFit.cover,
+                    width: size,
+                    height: size,
+                    centerSlice: isImageSmall
+                        ? const Rect.fromLTRB(1, 1, 1, 1)
+                        : null,
+                  ),
+                  if (isOffline)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: overlayColor,
+                        child: Center(
+                          child: Icon(
+                            FluentIcons.cellular_off_24_filled,
+                            size: 24,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
+            errorWidget: (context, url, error) =>
+                const NullArtworkWidget(iconSize: 30),
           ),
-          errorWidget: (context, url, error) =>
-              const NullArtworkWidget(iconSize: 30),
-        ),
-        if (isDurationAvailable)
-          SizedBox(
-            width: size - 10,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '(${formatDuration(duration)})',
-                style: TextStyle(
-                  color: primaryColor,
-                  fontWeight: FontWeight.bold,
+          if (isDurationAvailable)
+            SizedBox(
+              width: size - 10,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '(${formatDuration(duration)})',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
